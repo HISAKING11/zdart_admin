@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Upload tawh te</title>
+  
+</head>
+<body>
+  <link rel="stylesheet" href="./admin3.css">
+  <div class="menu-bar">
+  <div class="menu-item" data-section="uploadImage" onClick="location.href='./admin.html'">Image Upload</div>
+  <div class="menu-item  active" data-section="manageImage" onclick="location.href='./admin2.html'">Image Upload tawh te</div>
+  <div class="menu-item" data-section="uploadBlog" onclick="location.href='./admin2.html'">Blog Upload</div>
+  <div class="menu-item" data-section="manageBlog" onclick="location.href='./admin2.html'">Blog Upload tawh te</div>
+</div>
+
+  <div class="container">
+    <h2>Image Upload tawh te</h2>
+    <div id="imageGrid" class="image-grid">
+      <div class="loading">Loading images...</div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3>Edit Image Details</h3>
+      <label for="editTitle">Title (Thupui) *</label>
+      <input type="text" id="editTitle" placeholder="Enter title" />
+      <label for="editDesc">Description (Thu belh duh) *</label>
+      <textarea id="editDesc" placeholder="Enter description"></textarea>
+      <div class="modal-actions">
+        <button class="btn-save" onclick="saveEdit()">Save Changes</button>
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAD0j20UUYETyC4FflYoW5gXZlgEdHiidQ",
+      authDomain: "zdart-70ce1.firebaseapp.com",
+      projectId: "zdart-70ce1",
+      storageBucket: "zdart-70ce1.appspot.com",
+      messagingSenderId: "969125577134",
+      appId: "1:969125577134:web:f8bc6c82c5f6a3f9ee483f",
+      measurementId: "G-W0KZRR52T2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let currentEditId = null;
+
+    // Load all images
+    async function loadImages() {
+      const grid = document.getElementById("imageGrid");
+      grid.innerHTML = '<div class="loading">Loading images...</div>';
+
+      try {
+        const q = query(collection(db, "gallery"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          grid.innerHTML = '<div class="placeholder">No images uploaded yet.</div>';
+          return;
+        }
+
+        grid.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          const card = document.createElement("div");
+          card.classList.add("image-card");
+          card.innerHTML = `
+            <img src="${data.imageUrl}" alt="${data.title}" />
+            <div class="image-info">
+              <div>
+                <div class="image-title">${data.title}</div>
+                <div class="image-desc">${data.description}</div>
+              </div>
+              <div class="image-actions">
+                <button class="btn btn-edit" onclick="openEditModal('${id}', '${data.title.replace(/'/g, "\\'")}', '${data.description.replace(/'/g, "\\'")}')">Edit</button>
+                <button class="btn btn-delete" onclick="deleteImage('${id}')">Delete</button>
+              </div>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+        grid.innerHTML = '<div class="placeholder" style="color:#f87171;">Failed to load images.</div>';
+      }
+    }
+
+    window.openEditModal = (id, title, desc) => {
+      currentEditId = id;
+      document.getElementById("editTitle").value = title;
+      document.getElementById("editDesc").value = desc;
+      document.getElementById("editModal").classList.add("show");
+    };
+
+    window.closeModal = () => {
+      document.getElementById("editModal").classList.remove("show");
+      currentEditId = null;
+    };
+
+    window.saveEdit = async () => {
+      const newTitle = document.getElementById("editTitle").value.trim();
+      const newDesc = document.getElementById("editDesc").value.trim();
+
+      if (!newTitle || !newDesc) {
+        alert("Title & description cannot be empty.");
+        return;
+      }
+
+      if (!currentEditId) return;
+
+      try {
+        await updateDoc(doc(db, "gallery", currentEditId), {
+          title: newTitle,
+          description: newDesc
+        });
+        alert("Updated successfully!");
+        closeModal();
+        loadImages();
+      } catch (err) {
+        console.error(err);
+        alert("Failed to update image.");
+      }
+    };
+
+    window.deleteImage = async (id) => {
+      if (!confirm("Are you sure you want to delete this image?")) return;
+
+      try {
+        await deleteDoc(doc(db, "gallery", id));
+        alert("Deleted successfully!");
+        loadImages();
+      } catch (err) {
+        console.error(err);
+        alert("Failed to delete image.");
+      }
+    };
+
+    // Load images on page load
+    window.addEventListener('DOMContentLoaded', loadImages);
+  </script>
+</body>
+</html>

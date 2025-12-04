@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Image</title>
+  <script type="module">
+    // -------------------------------
+    // Firebase SDKs
+    // -------------------------------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, getDocs, doc, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: process.env.FIREBASE_API,
+      authDomain: "zdart-70ce1.firebaseapp.com",
+      projectId: "zdart-70ce1",
+      storageBucket: "zdart-70ce1.appspot.com",
+      messagingSenderId: "969125577134",
+      appId: "1:969125577134:web:f8bc6c82c5f6a3f9ee483f",
+      measurementId: "G-W0KZRR52T2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Cloudinary config
+    const cloudName = "dqakyi3qt";
+    const uploadPreset = "zdarts";
+
+    // -------------------------------
+    // Upload + Firestore Save
+    // -------------------------------
+    window.submitForm = async (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById("title").value.trim();
+      const description = document.getElementById("description").value.trim();
+      const file = document.getElementById("fileInput").files[0];
+
+      if (!title || !description || !file) return alert("Please fill all fields and select an image.");
+
+      const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "<p>Uploading... Please wait.</p>";
+
+      try {
+        const res = await fetch(url, { method: "POST", body: formData });
+        const data = await res.json();
+        if (!data.secure_url) throw new Error("Upload na lamah buaina awm tlat.");
+
+        await addDoc(collection(db, "gallery"), {
+          title,
+          description,
+          imageUrl: data.secure_url,
+          createdAt: serverTimestamp()
+        });
+
+        resultDiv.innerHTML = `<div class="success">
+          <p><strong>Upload & Save Successful!</strong></p>
+          <p><strong>Title:</strong> ${title}</p>
+          <p><strong>Description:</strong> ${description}</p>
+          <img src="${data.secure_url}" width="100%" style="border-radius:10px;margin-top:10px;">
+          <br><a href="${data.secure_url}" target="_blank" style="color:#3b82f6;">View Image</a>
+        </div>`;
+
+        document.getElementById("uploadForm").reset();
+        loadImages(); // refresh the image list after upload
+      } catch (err) {
+        console.error("Error:", err);
+        resultDiv.innerHTML = "<p style='color:#f87171;'>Something went wrong. Check console.</p>";
+      }
+    };
+
+    // -------------------------------
+    // Menu tab switch logic
+    // -------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      const menuItems = document.querySelectorAll(".menu-item");
+      const sections = document.querySelectorAll(".section");
+
+      menuItems.forEach(item => {
+        item.addEventListener("click", () => {
+          document.getElementById("result").innerHTML = "";
+          menuItems.forEach(i => i.classList.remove("active"));
+          sections.forEach(s => s.classList.remove("active"));
+          item.classList.add("active");
+          const sectionToShow = document.getElementById(item.dataset.section);
+          if (sectionToShow) sectionToShow.classList.add("active");
+          if (item.dataset.section === "manageImage") loadImages();
+        });
+      });
+    });
+
+    // -------------------------------
+    // Load Images for Management
+    // -------------------------------
+    async function loadImages() {
+      const container = document.getElementById("imageList");
+      container.innerHTML = "<p>Loading images...</p>";
+
+      try {
+        const q = query(collection(db, "gallery"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          container.innerHTML = "<p class='placeholder'>Thlalak upload a la awm lo...</p>";
+          return;
+        }
+
+        container.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+
+          const card = document.createElement("div");
+          card.classList.add("image-card");
+          card.innerHTML = `
+            <img src="${data.imageUrl}" alt="${data.title}" />
+            <input type="text" value="${data.title}" placeholder="Title" />
+            <textarea rows="2">${data.description}</textarea>
+            <div class="buttons">
+              <button class="update">Update</button>
+              <button class="delete">Delete</button>
+            </div>
+          `;
+
+          // Update button
+          card.querySelector(".update").addEventListener("click", async () => {
+            const newTitle = card.querySelector("input").value.trim();
+            const newDesc = card.querySelector("textarea").value.trim();
+            if (!newTitle || !newDesc) return alert("Title & description dah awl theih loh..");
+
+            await updateDoc(doc(db, "gallery", id), { title: newTitle, description: newDesc });
+            alert("Updat ani e!");
+            loadImages();
+          });
+
+          // Delete button
+          card.querySelector(".delete").addEventListener("click", async () => {
+            if (!confirm("Delete comfirm rawh le?")) return;
+            await deleteDoc(doc(db, "gallery", id));
+            alert("Deleted successfully!");
+            loadImages();
+          });
+
+          container.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p style='color:#f87171;'>Failed to load images.</p>";
+      }
+    }
+  </script>
+</head>
+<body>
+<link rel="stylesheet" href="./admin.css">
+<div class="menu-bar">
+  <div class="menu-item active" data-section="uploadImage">Image Upload na</div>
+  <div class="menu-item" data-section="manageImage" onclick="location.href='./admin3.html'">Image Upload tawh te</div>
+  <div class="menu-item" data-section="uploadBlog" onclick="location.href='./admin2.html'">Blog Upload na</div>
+  <div class="menu-item" data-section="manageBlog" onclick="location.href='./admin4.html'">Blog Upload tawh te</div>
+</div>
+
+<!-- Upload Section -->
+<div id="uploadImage" class="section active">
+  <h2>Upload Image & Save</h2>
+  <form id="uploadForm" onsubmit="submitForm(event)">
+    <label>Title(Thupui) <small style="color:#f87171;">*</small></label>
+    <input type="text" id="title" placeholder="Enter title" required />
+    <label>Description(thu belh duh) <small style="color:#f87171;">*</small></label>
+    <textarea id="description" rows="3" placeholder="Enter description" required></textarea>
+    <label>Choose Image <small style="color:#f87171;">*</small></label>
+    <input type="file" id="fileInput" accept="image/*" required />
+    <button type="submit">Upload & Save</button>
+  </form>
+  <div id="result"></div>
+</div>
+
+<!-- Image Management Section -->
+<div id="manageImage" class="section">
+  <h2>Image Upload tawh te</h2>
+  <div id="imageList"></div>
+</div>
+
+
+
+
+</body>
+</html>
