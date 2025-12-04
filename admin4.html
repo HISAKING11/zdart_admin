@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog Management</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Inter, system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      background: 
+        radial-gradient(1200px 600px at 10% 10%, rgba(59,130,246,0.05), transparent 10%),
+        linear-gradient(180deg, #04060a 0%, #090e18 100%);
+      color: #e6eef8;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .menu-bar {
+      display: flex;
+      background: #152036;
+      padding: 12px 24px;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: -20px -20px 24px -20px;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.6);
+      border-radius: 0 0 8px 8px;
+    }
+
+    .menu-item {
+      cursor: pointer;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      user-select: none;
+      color: #94a3b8;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .menu-item.active,
+    .menu-item:hover {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      color: white;
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      z-index: 2000;
+      animation: slideIn 0.3s ease-out;
+      max-width: 400px;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(420px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .notification.success {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .notification.error {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+
+    .notification.loading {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section h2 {
+      text-align: center;
+      font-family: "Playfair Display", serif;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #3b82f6;
+      margin-bottom: 32px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: rgba(10,16,28,0.95);
+      border: 1px solid rgba(59,130,246,0.12);
+      border-radius: 14px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+    }
+
+    .modal-content h3 {
+      font-family: "Playfair Display", serif;
+      color: #3b82f6;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #e6eef8;
+      font-size: 14px;
+    }
+
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(59,130,246,0.12);
+      background: rgba(59,130,246,0.06);
+      color: #e6eef8;
+      font-size: 14px;
+      box-sizing: border-box;
+      font-family: Inter, Arial, sans-serif;
+      margin-bottom: 16px;
+      transition: border 0.2s;
+      outline: none;
+    }
+
+    .modal-content input:focus,
+    .modal-content textarea:focus {
+      border: 1.5px solid #3b82f6;
+    }
+
+    .modal-content textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .modal-actions button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      color: white;
+    }
+
+    .btn-save:hover {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      transform: translateY(-1px);
+    }
+
+    .btn-cancel {
+      background: rgba(148, 163, 184, 0.2);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .btn-cancel:hover {
+      background: rgba(148, 163, 184, 0.3);
+    }
+
+    .image-replace-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .image-replace-buttons button {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+
+    .btn-yes {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-yes:hover,
+    .btn-yes.active {
+      background: rgba(34, 197, 94, 0.4);
+    }
+
+    .btn-no {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .btn-no:hover,
+    .btn-no.active {
+      background: rgba(248, 113, 113, 0.4);
+    }
+
+    #fileUploadContainer {
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    #fileUploadContainer input[type="file"] {
+      border: 1px dashed rgba(59,130,246,0.3);
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .blog-container {
+      background: rgba(10,16,28,0.55);
+      border: 1px solid rgba(59,130,246,0.12);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+      display: flex;
+      margin-bottom: 20px;
+    }
+
+    .blog-container:hover {
+      box-shadow: 0 8px 28px rgba(59,130,246,0.15);
+      transform: translateY(-2px);
+    }
+
+    .blog-image {
+      width: 200px;
+      height: 150px;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+    }
+
+    .blog-content-root {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .blog-header {
+      margin-bottom: 12px;
+    }
+
+    .blog-title {
+      font-family: "Playfair Display", serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: #3b82f6;
+      margin-bottom: 4px;
+    }
+
+    .blog-meta {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .blog-desc-short,
+    .blog-desc-full {
+      font-size: 14px;
+      color: #e6eef8;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      flex: 1;
+    }
+
+    .blog-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn.read-more {
+      background: rgba(59,130,246,0.2);
+      color: #3b82f6;
+    }
+
+    .action-btn.read-more:hover {
+      background: rgba(59,130,246,0.3);
+    }
+
+    .action-btn.edit {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+      color: white;
+    }
+
+    .action-btn.edit:hover {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    }
+
+    .action-btn.delete {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+    }
+
+    .action-btn.delete:hover {
+      background: rgba(248, 113, 113, 0.3);
+    }
+
+    .loading-state,
+    .empty-state {
+      text-align: center;
+      color: #94a3b8;
+      padding: 40px 20px;
+      font-size: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .blog-container {
+        flex-direction: column;
+      }
+
+      .blog-image {
+        width: 100%;
+        height: 200px;
+      }
+
+      .modal-content {
+        width: 95%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="menu-bar">
+  <div class="menu-item" onclick="location.href='./admin.html'">Image Uploadna</div>
+  <div class="menu-item" onclick="location.href='./admin3.html'">Image Upload tawh te</div>
+  <div class="menu-item" onclick="location.href='./admin2.html'">Blog Uploadna</div>
+  <div class="menu-item active">Blog Upload tawh te</div>
+</div>
+
+<div class="section active">
+  <h2>Blog Upload tawh te</h2>
+  <div id="blogList"></div>
+</div>
+
+<!-- Edit Blog Modal -->
+<div id="editBlogModal" class="modal">
+  <div class="modal-content">
+    <h3>Edit Blog</h3>
+    
+    <label for="editBlogTitle">Title(Thupui)*</label>
+    <input type="text" id="editBlogTitle" placeholder="Enter blog title" />
+    
+    <label for="editBlogDesc">Description(thu leh hla) *</label>
+    <textarea id="editBlogDesc" placeholder="Enter blog description"></textarea>
+    
+    <label>Image thlak i duh em?</label>
+    <div class="image-replace-buttons">
+      <button id="replaceImageYes" class="btn-yes">Aw</button>
+      <button id="replaceImageNo" class="btn-no">Aih</button>
+    </div>
+    
+    <div id="fileUploadContainer">
+      <label for="newBlogImage">Image thlak tur i thlan angai</label>
+      <input type="file" id="newBlogImage" accept="image/*" />
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveBlogEdit()">Save Changes</button>
+      <button class="btn-cancel" onclick="closeBlogEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+  getFirestore, collection, 
+  getDocs, deleteDoc, doc, orderBy, query, updateDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAD0j20UUYETyC4FflYoW5gXZlgEdHiidQ",
+  authDomain: "zdart-70ce1.firebaseapp.com",
+  projectId: "zdart-70ce1",
+  storageBucket: "zdart-70ce1.appspot.com",
+  messagingSenderId: "969125577134",
+  appId: "1:969125577134:web:f8bc6c82c5f6a3f9ee483f",
+  measurementId: "G-W0KZRR52T2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const CLOUD_NAME = "dqakyi3qt";
+const UPLOAD_PRESET = "zdarts";
+
+let currentEditBlogId = null;
+let replaceImageChoice = null;
+
+// Notification system
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.classList.add('notification', type);
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.remove();
+  }, 4000);
+}
+
+async function uploadImage(file) {
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
+  const res = await fetch(url, { method: "POST", body: formData });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error("Upload failed");
+  return data.secure_url;
+}
+
+// Load blogs
+async function loadBlogs() {
+  const blogList = document.getElementById('blogList');
+  blogList.innerHTML = '<div class="loading-state">Loading blogs...</div>';
+
+  try {
+    const q = query(collection(db, "blog"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      blogList.innerHTML = '<div class="empty-state">No blogs uploaded yet.</div>';
+      return;
+    }
+
+    blogList.innerHTML = "";
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const id = docSnap.id;
+
+      const blogContainer = document.createElement('div');
+      blogContainer.classList.add('blog-container');
+      blogContainer.setAttribute('data-id', id);
+
+      const shortDesc = data.description.length > 150 ? 
+        data.description.substring(0, 150) + '...' : data.description;
+
+      const createdDate = data.createdAt ? 
+        new Date(data.createdAt.toDate()).toLocaleDateString() : 'Unknown date';
+
+      blogContainer.innerHTML = `
+        <div class="blog-image" style="background-image:url('${data.imageUrl}');"></div>
+        <div class="blog-content-root">
+          <div class="blog-header">
+            <div class="blog-title">${data.title}</div>
+            <div class="blog-meta">Created: ${createdDate}</div>
+          </div>
+          <div class="blog-desc-short">${shortDesc}</div>
+          <div class="blog-desc-full" style="display:none;">${data.description}</div>
+          <div class="blog-actions">
+            <button class="action-btn read-more">Read More</button>
+            <button class="action-btn edit">Edit</button>
+            <button class="action-btn delete">Delete</button>
+          </div>
+        </div>
+      `;
+
+      const readMoreBtn = blogContainer.querySelector('.read-more');
+      const editBtn = blogContainer.querySelector('.edit');
+      const deleteBtn = blogContainer.querySelector('.delete');
+      const shortDescDiv = blogContainer.querySelector('.blog-desc-short');
+      const fullDescDiv = blogContainer.querySelector('.blog-desc-full');
+
+      readMoreBtn.addEventListener('click', () => {
+        if (shortDescDiv.style.display !== 'none') {
+          shortDescDiv.style.display = 'none';
+          fullDescDiv.style.display = 'block';
+          readMoreBtn.textContent = 'Show Less';
+        } else {
+          shortDescDiv.style.display = 'block';
+          fullDescDiv.style.display = 'none';
+          readMoreBtn.textContent = 'Read More';
+        }
+      });
+
+      editBtn.addEventListener('click', async () => {
+        currentEditBlogId = id;
+        replaceImageChoice = null;
+        
+        document.getElementById("editBlogTitle").value = data.title;
+        document.getElementById("editBlogDesc").value = data.description;
+        document.getElementById("fileUploadContainer").style.display = "none";
+        document.getElementById("newBlogImage").value = "";
+        
+        document.getElementById("replaceImageYes").classList.remove("active");
+        document.getElementById("replaceImageNo").classList.remove("active");
+        
+        document.getElementById("editBlogModal").classList.add("show");
+      });
+
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm(`Delete turin confirm rawh le "${data.title}"?`)) return;
+        try {
+          showNotification("⏳ Deleting blog...", "loading");
+          await deleteDoc(doc(db, "blog", id));
+          showNotification("✅ Blog delete ani e!", "success");
+          loadBlogs();
+        } catch (err) {
+          console.error("Error deleting blog:", err);
+          showNotification("❌ Blog delete lamah buaina a awm tlat!", "error");
+        }
+      });
+
+      blogList.appendChild(blogContainer);
+    });
+  } catch (err) {
+    console.error("Error loading blogs:", err);
+    blogList.innerHTML = '<div class="empty-state" style="color:#f87171;">❌ Failed to load blogs.</div>';
+    showNotification("❌ Blog lamah fel lo a awm", "error");
+  }
+}
+
+// Image replacement choice handlers
+document.getElementById("replaceImageYes").addEventListener('click', () => {
+  replaceImageChoice = true;
+  document.getElementById("fileUploadContainer").style.display = "block";
+  document.getElementById("replaceImageYes").classList.add("active");
+  document.getElementById("replaceImageNo").classList.remove("active");
+});
+
+document.getElementById("replaceImageNo").addEventListener('click', () => {
+  replaceImageChoice = false;
+  document.getElementById("fileUploadContainer").style.display = "none";
+  document.getElementById("replaceImageNo").classList.add("active");
+  document.getElementById("replaceImageYes").classList.remove("active");
+});
+
+// Save blog edit
+window.saveBlogEdit = async () => {
+  const newTitle = document.getElementById("editBlogTitle").value.trim();
+  const newDesc = document.getElementById("editBlogDesc").value.trim();
+  
+  if (!newTitle) {
+    showNotification("❌ Title dah ruah theih loh!", "error");
+    return;
+  }
+  
+  if (!newDesc) {
+    showNotification("❌ Description dah ruah ltheih loh!", "error");
+    return;
+  }
+  
+  if (replaceImageChoice === null) {
+    showNotification("❌ Image awmsa thlak tur i thlan angai! ", "error");
+    return;
+  }
+  
+  if (replaceImageChoice && !document.getElementById("newBlogImage").files[0]) {
+    showNotification("❌ Image thlan a hman loh a ni emaw thlan that angai!", "error");
+    return;
+  }
+  
+  let updateData = { title: newTitle, description: newDesc };
+  
+  try {
+    if (replaceImageChoice) {
+      showNotification("⏳ Uploading new image...", "loading");
+      const file = document.getElementById("newBlogImage").files[0];
+      const newImageUrl = await uploadImage(file);
+      updateData.imageUrl = newImageUrl;
+      await updateDoc(doc(db, "blog", currentEditBlogId), updateData);
+      showNotification("✅ Blog update ani e!", "success");
+    } else {
+      showNotification("⏳ Updating blog...", "loading");
+      await updateDoc(doc(db, "blog", currentEditBlogId), updateData);
+      showNotification("✅ Blog update ani e!", "success");
+    }
+    
+    closeBlogEditModal();
+    loadBlogs();
+  } catch (err) {
+    console.error("Error updating blog:", err);
+    showNotification("❌ Uploadna lam ah buaina a awm tlat!", "error");
+  }
+};
+
+window.closeBlogEditModal = () => {
+  document.getElementById("editBlogModal").classList.remove("show");
+  currentEditBlogId = null;
+  replaceImageChoice = null;
+};
+
+// Load on page load
+window.addEventListener('DOMContentLoaded', loadBlogs);
+</script>
+
+</body>
+</html>
